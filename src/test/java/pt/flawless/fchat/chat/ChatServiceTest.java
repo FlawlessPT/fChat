@@ -50,6 +50,7 @@ class ChatServiceTest {
     List<String> console = new ArrayList<>();
     List<Throwable> errors = new ArrayList<>();
     boolean groupsFail, balanceFail, onMain, tagsFail, tagsThrow;
+    long now = 10_000;
     List<String> playerTags = List.of();
     Set<String> groups = Set.of();
     ChatConfig config;
@@ -63,7 +64,7 @@ class ChatServiceTest {
         all = List.of(alice, bob, far, other);
         config = new ChatConfig(50, new TagSelector(List.of(new TagRule("admin", "§c[ADMIN]")), "§7[Membro]"),
                 new ChatFormat("{canal} {tags}{tag} {nome}: {mensagem}", "[L]", "[G]", "§f", "§f"),
-                "Dinheiro: {dinheiro}", "Ninguém por perto.", "", "", "", "", "", "", "", "");
+                "Dinheiro: {dinheiro}", "Ninguém por perto.", "", "", "", "", "", "", "", "", 1000, "Devagar.");
     }
 
     ChatService service() {
@@ -83,7 +84,37 @@ class ChatServiceTest {
                     return tagsFail ? CompletableFuture.failedFuture(new RuntimeException("db"))
                             : CompletableFuture.completedFuture(playerTags);
                 });
-        return new ChatService(config, perms, eco, tags, Runnable::run, errors::add, () -> all, console::add, () -> onMain);
+        return new ChatService(config, perms, eco, tags, Runnable::run, errors::add, () -> all, console::add, () -> onMain, () -> now);
+    }
+
+    @Test
+    void secondMessageWithinCooldownIsDroppedAndSenderWarned() {
+        ChatService s = service();
+        s.send(alice, Channel.GLOBAL, "um");
+        now += 999;
+        s.send(alice, Channel.LOCAL, "dois");
+        assertEquals(1, bob.got.size());
+        assertEquals("Devagar.", alice.last());
+        assertEquals(List.of("[G] [Membro] Alice: um"), console);
+    }
+
+    @Test
+    void messageAfterCooldownIsSentAndCooldownIsPerPlayer() {
+        ChatService s = service();
+        s.send(alice, Channel.GLOBAL, "um");
+        s.send(bob, Channel.GLOBAL, "outro");
+        now += 1000;
+        s.send(alice, Channel.GLOBAL, "dois");
+        assertEquals("[G] [Membro] Alice: dois", far.last());
+        assertEquals(3, console.size());
+    }
+
+    @Test
+    void blankMessageDoesNotStartCooldown() {
+        ChatService s = service();
+        s.send(alice, Channel.GLOBAL, "§c");
+        s.send(alice, Channel.GLOBAL, "oi");
+        assertEquals(List.of("[G] [Membro] Alice: oi"), console);
     }
 
     @Test

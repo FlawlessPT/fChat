@@ -47,7 +47,8 @@ public class FChat extends JavaPlugin {
             ChatConfig config = ChatConfig.from(getConfig());
             ChatService service = new ChatService(config, perms, economy, tags, this::runOnMainThread, this::logError,
                     () -> Bukkit.getOnlinePlayers().stream().map(PlayerRecipient::new).toList(),
-                    line -> Bukkit.getConsoleSender().sendMessage(line), Bukkit::isPrimaryThread);
+                    line -> Bukkit.getConsoleSender().sendMessage(line), Bukkit::isPrimaryThread,
+                    System::currentTimeMillis);
 
             getServer().getServicesManager().register(ChatApi.class, prefs, this, ServicePriority.Normal);
             Bukkit.getPluginManager().registerEvents(new PrefsListener(prefs), this);

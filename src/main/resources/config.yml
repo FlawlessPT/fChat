@@ -24,3 +24,6 @@ channel-global: "§7Chat por defeito: §aGlobal"
 current-channel: "§7Canal atual: §f{canal}"
 save-failed: "§cNão foi possível guardar a preferência."
 only-players: "Apenas jogadores."
+# Tempo mínimo (ms) entre mensagens do mesmo jogador, local ou global; 0 desliga
+cooldown-ms: 1000
+cooldown-message: "§cEspera um pouco antes de enviar outra mensagem."

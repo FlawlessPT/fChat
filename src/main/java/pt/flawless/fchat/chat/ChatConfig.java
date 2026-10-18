@@ -10,7 +10,7 @@ import java.util.Map;
 public record ChatConfig(double radius, TagSelector tags, ChatFormat format, String hoverMoney,
                          String nobodyNearby, String usageLocal, String usageGlobal, String usageChat,
                          String channelLocal, String channelGlobal, String currentChannel,
-                         String saveFailed, String onlyPlayers) {
+                         String saveFailed, String onlyPlayers, long cooldownMs, String cooldownMessage) {
 
     public static ChatConfig from(ConfigurationSection c) {
         List<TagRule> rules = new ArrayList<>();
@@ -31,6 +31,8 @@ public record ChatConfig(double radius, TagSelector tags, ChatFormat format, Str
                 c.getString("channel-global", "§7Chat por defeito: §aGlobal"),
                 c.getString("current-channel", "§7Canal atual: §f{canal}"),
                 c.getString("save-failed", "§cNão foi possível guardar a preferência."),
-                c.getString("only-players", "Apenas jogadores."));
+                c.getString("only-players", "Apenas jogadores."),
+                c.getLong("cooldown-ms", 1000),
+                c.getString("cooldown-message", "§cEspera um pouco antes de enviar outra mensagem."));
     }
 }

@@ -12,9 +12,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -29,10 +32,13 @@ public class ChatService {
     private final Supplier<? extends Collection<? extends Recipient>> online;
     private final Consumer<String> console;
     private final BooleanSupplier onMainThread;
+    private final LongSupplier clock;
+    // shortcut: uma entrada por jogador que já falou, nunca limpa; aceitável até haver um evento de saída aqui.
+    private final ConcurrentHashMap<UUID, Long> lastMessage = new ConcurrentHashMap<>();
 
     public ChatService(ChatConfig config, PermissionsApi perms, EconomyApi economy, TagsApi tags, Executor mainThread,
                        Consumer<Throwable> onError, Supplier<? extends Collection<? extends Recipient>> online,
-                       Consumer<String> console, BooleanSupplier onMainThread) {
+                       Consumer<String> console, BooleanSupplier onMainThread, LongSupplier clock) {
         this.config = config;
         this.perms = perms;
         this.economy = economy;
@@ -42,6 +48,7 @@ public class ChatService {
         this.online = online;
         this.console = console;
         this.onMainThread = onMainThread;
+        this.clock = clock;
     }
 
     public void send(Player sender, Channel channel, String rawMessage) {
@@ -51,6 +58,7 @@ public class ChatService {
     public void send(Recipient sender, Channel channel, String rawMessage) {
         String message = ChatFormat.sanitize(rawMessage);
         if (message.isEmpty()) return;
+        if (!acquireCooldown(sender)) return;
 
         CompletableFuture<Set<String>> groups = safe(() -> perms.getGroups(sender.id()), Set.of());
         CompletableFuture<Long> balance = safe(() -> economy.getBalance(sender.id()), null);
@@ -63,6 +71,20 @@ public class ChatService {
                 });
         // Fora da thread principal esperamos (mantém a ordem das mensagens); na principal só encadeamos.
         if (!onMainThread.getAsBoolean()) both.join();
+    }
+
+    /** Uma mensagem por {@code cooldownMs} por jogador, em qualquer canal; avisa o jogador quando recusa. */
+    private boolean acquireCooldown(Recipient sender) {
+        long now = clock.getAsLong();
+        boolean[] allowed = {false};
+        lastMessage.compute(sender.id(), (id, last) -> {
+            allowed[0] = last == null || now - last >= config.cooldownMs();
+            return allowed[0] ? now : last;
+        });
+        if (!allowed[0]) {
+            mainThread.execute(() -> sender.send(new BaseComponent[]{new TextComponent(config.cooldownMessage())}));
+        }
+        return allowed[0];
     }
 
     private <T> CompletableFuture<T> safe(Supplier<CompletableFuture<T>> call, T fallback) {

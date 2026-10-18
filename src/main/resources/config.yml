@@ -1,0 +1,23 @@
+# Raio (em blocos) do chat local
+radius: 50
+# Placeholders: {canal} {tag} {nome} {mensagem}
+format: "{canal} {tag} {nome}: {mensagem}"
+format-local-prefix: "§e[L]"
+format-global-prefix: "§a[G]"
+name-color: "§f"
+message-color: "§f"
+# Ordem = prioridade: ganha o primeiro grupo do jogador que esteja na lista
+tags:
+  - group: admin
+    tag: "§c[ADMIN]"
+  - group: vip
+    tag: "§2[VIP]"
+default-tag: "§7[Membro]"
+hover-money: "§7Dinheiro: §f{dinheiro}"
+nobody-nearby: "§7Ninguém por perto para te ouvir."
+usage-local: "Uso: /l <mensagem>"
+usage-global: "Uso: /g <mensagem>"
+usage-chat: "Uso: /chat <local|global>"
+channel-local: "§7Canal alterado para §elocal§7."
+channel-global: "§7Canal alterado para §aglobal§7."
+only-players: "Só jogadores podem usar este comando."

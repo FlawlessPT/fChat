@@ -1,0 +1,16 @@
+name: fChat
+main: pt.flawless.fchat.FChat
+description: Chat com canais local e global
+version: 1.0
+depend: [fAPI, fDatabase, fEconomy, fPermissions]
+commands:
+  l:
+    description: Envia uma mensagem no canal local
+    usage: /l <mensagem>
+  g:
+    description: Envia uma mensagem no canal global
+    usage: /g <mensagem>
+  chat:
+    description: Muda o canal do chat normal
+    usage: /chat <local|global>
+    aliases: [canal]

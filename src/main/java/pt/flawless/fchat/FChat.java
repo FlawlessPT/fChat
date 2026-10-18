@@ -12,6 +12,7 @@ import pt.flawless.fapi.economy.Economies;
 import pt.flawless.fapi.enums.EMessageTypeEnum;
 import pt.flawless.fapi.logs.FConsoleLogger;
 import pt.flawless.fapi.permissions.Permissions;
+import pt.flawless.fapi.tags.TagSurface;
 import pt.flawless.fapi.tags.Tags;
 import pt.flawless.fapi.tags.TagsApi;
 import pt.flawless.fapi.tags.TagsUnavailableException;
@@ -72,7 +73,7 @@ public class FChat extends JavaPlugin {
         } catch (TagsUnavailableException e) {
             consoleLogger.sendMessage("fTags indisponível: o chat segue sem tags", EMessageTypeEnum.INFO);
             return new TagsApi() {
-                public CompletableFuture<List<String>> getVisibleTags(UUID uuid) {
+                public CompletableFuture<List<String>> getVisibleTags(UUID uuid, TagSurface surface) {
                     return CompletableFuture.completedFuture(List.of());
                 }
 

@@ -13,6 +13,8 @@ import pt.flawless.fapi.enums.EMessageTypeEnum;
 import pt.flawless.fapi.logs.FConsoleLogger;
 import pt.flawless.fapi.permissions.Permissions;
 import pt.flawless.fapi.tags.Tags;
+import pt.flawless.fapi.tags.TagsApi;
+import pt.flawless.fapi.tags.TagsUnavailableException;
 import pt.flawless.fchat.chat.ChatConfig;
 import pt.flawless.fchat.chat.ChatListener;
 import pt.flawless.fchat.chat.ChatService;
@@ -24,6 +26,8 @@ import pt.flawless.fchat.prefs.PrefsListener;
 import pt.flawless.fchat.prefs.SqlChatPrefsRepository;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 public class FChat extends JavaPlugin {
     private final FConsoleLogger consoleLogger = new FConsoleLogger(this.getName());
@@ -35,7 +39,7 @@ public class FChat extends JavaPlugin {
             DatabaseService database = Databases.get();
             var economy = Economies.get();
             var perms = Permissions.get();
-            var tags = Tags.get();
+            var tags = tagsOrNoop();
             database.migrate(this, List.of("db/fchat/V001__create_prefs.sql"));
 
             ChatPrefs prefs = new ChatPrefs(new SqlChatPrefsRepository(database), this::logError);
@@ -59,6 +63,28 @@ public class FChat extends JavaPlugin {
             return;
         }
         consoleLogger.sendEnablePluginMessage();
+    }
+
+    /** Sem fTags o chat segue sem tags (a mensagem sai com o formato atual). */
+    private TagsApi tagsOrNoop() {
+        try {
+            return Tags.get();
+        } catch (TagsUnavailableException e) {
+            consoleLogger.sendMessage("fTags indisponível: o chat segue sem tags", EMessageTypeEnum.INFO);
+            return new TagsApi() {
+                public CompletableFuture<List<String>> getVisibleTags(UUID uuid) {
+                    return CompletableFuture.completedFuture(List.of());
+                }
+
+                public CompletableFuture<Boolean> give(UUID uuid, String tagId) {
+                    return CompletableFuture.completedFuture(false);
+                }
+
+                public CompletableFuture<Boolean> take(UUID uuid, String tagId) {
+                    return CompletableFuture.completedFuture(false);
+                }
+            };
+        }
     }
 
     private void logError(Throwable error) {

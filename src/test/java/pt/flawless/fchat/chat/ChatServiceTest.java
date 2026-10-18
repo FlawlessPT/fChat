@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import pt.flawless.fapi.chat.Channel;
 import pt.flawless.fapi.economy.EconomyApi;
 import pt.flawless.fapi.permissions.PermissionsApi;
+import pt.flawless.fapi.tags.TagsApi;
 
 import java.lang.reflect.Proxy;
 import java.util.*;
@@ -48,7 +49,8 @@ class ChatServiceTest {
     List<Fake> all;
     List<String> console = new ArrayList<>();
     List<Throwable> errors = new ArrayList<>();
-    boolean groupsFail, balanceFail, onMain;
+    boolean groupsFail, balanceFail, onMain, tagsFail, tagsThrow;
+    List<String> playerTags = List.of();
     Set<String> groups = Set.of();
     ChatConfig config;
 
@@ -60,7 +62,7 @@ class ChatServiceTest {
         other = new Fake("Other", "n", 0);
         all = List.of(alice, bob, far, other);
         config = new ChatConfig(50, new TagSelector(List.of(new TagRule("admin", "§c[ADMIN]")), "§7[Membro]"),
-                new ChatFormat("{canal} {tag} {nome}: {mensagem}", "[L]", "[G]", "§f", "§f"),
+                new ChatFormat("{canal} {tags}{tag} {nome}: {mensagem}", "[L]", "[G]", "§f", "§f"),
                 "Dinheiro: {dinheiro}", "Ninguém por perto.", "", "", "", "", "", "", "", "");
     }
 
@@ -75,7 +77,13 @@ class ChatServiceTest {
                     return balanceFail ? CompletableFuture.failedFuture(new RuntimeException("db"))
                             : CompletableFuture.completedFuture(1250L);
                 });
-        return new ChatService(config, perms, eco, Runnable::run, errors::add, () -> all, console::add, () -> onMain);
+        TagsApi tags = (TagsApi) Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class<?>[]{TagsApi.class}, (p, m, a) -> {
+                    if (tagsThrow) throw new RuntimeException("sync");
+                    return tagsFail ? CompletableFuture.failedFuture(new RuntimeException("db"))
+                            : CompletableFuture.completedFuture(playerTags);
+                });
+        return new ChatService(config, perms, eco, tags, Runnable::run, errors::add, () -> all, console::add, () -> onMain);
     }
 
     @Test
@@ -157,6 +165,29 @@ class ChatServiceTest {
     void placeholdersInMessageNotExpanded() {
         service().send(alice, Channel.GLOBAL, "{nome} {tag} $1");
         assertEquals("[G] [Membro] Alice: {nome} {tag} $1", bob.last());
+    }
+
+    @Test
+    void linhaTemTagsAntesDoGrupo() {
+        playerTags = List.of("[Magnata]");
+        service().send(alice, Channel.GLOBAL, "oi");
+        assertEquals("[G] [Magnata] [Membro] Alice: oi", bob.last());
+    }
+
+    @Test
+    void semTagsSeFalha() {
+        tagsFail = true;
+        service().send(alice, Channel.GLOBAL, "oi");
+        assertEquals("[G] [Membro] Alice: oi", bob.last());
+        assertEquals(1, errors.size());
+    }
+
+    @Test
+    void tagsLancaSincrono() {
+        tagsThrow = true;
+        service().send(alice, Channel.GLOBAL, "oi");
+        assertEquals("[G] [Membro] Alice: oi", bob.last());
+        assertEquals(1, errors.size());
     }
 
     @Test

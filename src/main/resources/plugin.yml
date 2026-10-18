@@ -2,7 +2,7 @@ name: fChat
 main: pt.flawless.fchat.FChat
 description: Chat com canais local e global
 version: 1.0
-depend: [fAPI, fDatabase, fEconomy, fPermissions]
+depend: [fAPI, fDatabase, fEconomy, fPermissions, fTags]
 commands:
   l:
     description: Envia uma mensagem no canal local

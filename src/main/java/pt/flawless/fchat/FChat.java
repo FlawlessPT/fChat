@@ -12,6 +12,7 @@ import pt.flawless.fapi.economy.Economies;
 import pt.flawless.fapi.enums.EMessageTypeEnum;
 import pt.flawless.fapi.logs.FConsoleLogger;
 import pt.flawless.fapi.permissions.Permissions;
+import pt.flawless.fapi.tags.Tags;
 import pt.flawless.fchat.chat.ChatConfig;
 import pt.flawless.fchat.chat.ChatListener;
 import pt.flawless.fchat.chat.ChatService;
@@ -34,11 +35,12 @@ public class FChat extends JavaPlugin {
             DatabaseService database = Databases.get();
             var economy = Economies.get();
             var perms = Permissions.get();
+            var tags = Tags.get();
             database.migrate(this, List.of("db/fchat/V001__create_prefs.sql"));
 
             ChatPrefs prefs = new ChatPrefs(new SqlChatPrefsRepository(database), this::logError);
             ChatConfig config = ChatConfig.from(getConfig());
-            ChatService service = new ChatService(config, perms, economy, this::runOnMainThread, this::logError,
+            ChatService service = new ChatService(config, perms, economy, tags, this::runOnMainThread, this::logError,
                     () -> Bukkit.getOnlinePlayers().stream().map(PlayerRecipient::new).toList(),
                     line -> Bukkit.getConsoleSender().sendMessage(line), Bukkit::isPrimaryThread);
 

@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import pt.flawless.fapi.chat.Channel;
 import pt.flawless.fapi.economy.EconomyApi;
 import pt.flawless.fapi.permissions.PermissionsApi;
+import pt.flawless.fapi.tags.TagsApi;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,18 +23,20 @@ public class ChatService {
     private final ChatConfig config;
     private final PermissionsApi perms;
     private final EconomyApi economy;
+    private final TagsApi tags;
     private final Executor mainThread;
     private final Consumer<Throwable> onError;
     private final Supplier<? extends Collection<? extends Recipient>> online;
     private final Consumer<String> console;
     private final BooleanSupplier onMainThread;
 
-    public ChatService(ChatConfig config, PermissionsApi perms, EconomyApi economy, Executor mainThread,
+    public ChatService(ChatConfig config, PermissionsApi perms, EconomyApi economy, TagsApi tags, Executor mainThread,
                        Consumer<Throwable> onError, Supplier<? extends Collection<? extends Recipient>> online,
                        Consumer<String> console, BooleanSupplier onMainThread) {
         this.config = config;
         this.perms = perms;
         this.economy = economy;
+        this.tags = tags;
         this.mainThread = mainThread;
         this.onError = onError;
         this.online = online;
@@ -51,10 +54,13 @@ public class ChatService {
 
         CompletableFuture<Set<String>> groups = safe(() -> perms.getGroups(sender.id()), Set.of());
         CompletableFuture<Long> balance = safe(() -> economy.getBalance(sender.id()), null);
-        CompletableFuture<Void> both = groups.thenCombine(balance, (g, b) -> {
-            deliverLater(sender, channel, message, g, b);
-            return null;
-        });
+        CompletableFuture<List<String>> playerTags = safe(() -> tags.getVisibleTags(sender.id()), List.of());
+        CompletableFuture<Void> both = groups.thenCombine(balance, (g, b) -> new Object[]{g, b})
+                .thenCombine(playerTags, (gb, t) -> {
+                    @SuppressWarnings("unchecked") Set<String> g = (Set<String>) gb[0];
+                    deliverLater(sender, channel, message, g, (Long) gb[1], t);
+                    return null;
+                });
         // Fora da thread principal esperamos (mantém a ordem das mensagens); na principal só encadeamos.
         if (!onMainThread.getAsBoolean()) both.join();
     }
@@ -71,20 +77,24 @@ public class ChatService {
         }
     }
 
-    private void deliverLater(Recipient sender, Channel channel, String message, Set<String> groups, Long cents) {
+    private void deliverLater(Recipient sender, Channel channel, String message, Set<String> groups, Long cents,
+                              List<String> playerTags) {
         mainThread.execute(() -> {
             try {
-                deliver(sender, channel, message, groups, cents);
+                deliver(sender, channel, message, groups, cents, playerTags);
             } catch (RuntimeException e) {
                 onError.accept(e);
             }
         });
     }
 
-    private void deliver(Recipient sender, Channel channel, String message, Set<String> groups, Long cents) {
+    private void deliver(Recipient sender, Channel channel, String message, Set<String> groups, Long cents,
+                         List<String> playerTags) {
         if (!sender.isOnline()) return;
+        // Os textos já trazem as cores do fTags; ficam com um espaço no fim para colar ao {tag}.
+        String tagsText = playerTags.isEmpty() ? "" : String.join(" ", playerTags) + " ";
         String hover = cents == null ? null : config.hoverMoney().replace("{dinheiro}", economy.format(cents));
-        BaseComponent[] line = config.format().build(channel, config.tags().select(groups), sender.name(), message, hover);
+        BaseComponent[] line = config.format().build(channel, tagsText, config.tags().select(groups), sender.name(), message, hover);
 
         List<Recipient> targets = new ArrayList<>();
         int others = 0;

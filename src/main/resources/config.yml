@@ -1,7 +1,7 @@
 # Raio (em blocos) do chat local
 radius: 50
-# Placeholders: {canal} {tag} {nome} {mensagem}
-format: "{canal} {tag} {nome}: {mensagem}"
+# Placeholders: {canal} {tags} (tags do jogador, com espaço no fim) {tag} (grupo) {nome} {mensagem}
+format: "{canal} {tags}{tag} {nome}: {mensagem}"
 format-local-prefix: "§e[L]"
 format-global-prefix: "§a[G]"
 name-color: "§f"

@@ -19,7 +19,7 @@ public final class ChatFormat {
         this.messageColor = messageColor;
     }
 
-    public BaseComponent[] build(Channel channel, String tag, String name, String message, String hoverText) {
+    public BaseComponent[] build(Channel channel, String tags, String tag, String name, String message, String hoverText) {
         String canal = channel == Channel.LOCAL ? localPrefix : globalPrefix;
         int i = format.indexOf(NAME);
         String before = i < 0 ? format : format.substring(0, i);
@@ -30,13 +30,13 @@ public final class ChatFormat {
                     new BaseComponent[]{new TextComponent(hoverText)}));
         // A mensagem entra só no fim, numa passagem, para nunca ser re-expandida.
         return new BaseComponent[]{
-                new TextComponent(withMessage(vars(before, canal, tag), message)),
+                new TextComponent(withMessage(vars(before, canal, tags, tag), message)),
                 nameC,
-                new TextComponent(withMessage(vars(after, canal, tag), message))};
+                new TextComponent(withMessage(vars(after, canal, tags, tag), message))};
     }
 
-    private String vars(String s, String canal, String tag) {
-        return s.replace("{canal}", canal).replace("{tag}", tag);
+    private String vars(String s, String canal, String tags, String tag) {
+        return s.replace("{canal}", canal).replace("{tags}", tags).replace("{tag}", tag);
     }
 
     private String withMessage(String s, String message) {

@@ -19,7 +19,7 @@ public record ChatConfig(double radius, TagSelector tags, ChatFormat format, Str
         return new ChatConfig(
                 c.getDouble("radius", 50),
                 new TagSelector(rules, c.getString("default-tag", "§7[Membro]")),
-                new ChatFormat(c.getString("format", "{canal} {tag} {nome}: {mensagem}"),
+                new ChatFormat(c.getString("format", "{canal} {tags}{tag} {nome}: {mensagem}"),
                         c.getString("format-local-prefix", "§e[L]"), c.getString("format-global-prefix", "§a[G]"),
                         c.getString("name-color", "§f"), c.getString("message-color", "§f")),
                 c.getString("hover-money", "§7Dinheiro: §f{dinheiro}"),

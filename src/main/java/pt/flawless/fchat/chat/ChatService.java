@@ -6,6 +6,7 @@ import org.bukkit.entity.Player;
 import pt.flawless.fapi.chat.Channel;
 import pt.flawless.fapi.economy.EconomyApi;
 import pt.flawless.fapi.permissions.PermissionsApi;
+import pt.flawless.fapi.ranks.RankApi;
 import pt.flawless.fapi.tags.TagsApi;
 
 import java.util.ArrayList;
@@ -35,6 +36,8 @@ public class ChatService {
     private final Consumer<String> console;
     private final BooleanSupplier onMainThread;
     private final LongSupplier clock;
+    /** Opcional (fRankup); sem ele o rank não aparece. */
+    private volatile RankApi ranks;
     // shortcut: uma entrada por jogador que já falou, nunca limpa; aceitável até haver um evento de saída aqui.
     private final ConcurrentHashMap<UUID, Long> lastMessage = new ConcurrentHashMap<>();
 
@@ -53,6 +56,10 @@ public class ChatService {
         this.clock = clock;
     }
 
+    public void setRanks(RankApi ranks) {
+        this.ranks = ranks;
+    }
+
     public void send(Player sender, Channel channel, String rawMessage) {
         send(new PlayerRecipient(sender), channel, rawMessage);
     }
@@ -65,10 +72,14 @@ public class ChatService {
         CompletableFuture<Set<String>> groups = safe(() -> perms.getGroups(sender.id()), Set.of());
         CompletableFuture<Long> balance = safe(() -> economy.getBalance(sender.id()), null);
         CompletableFuture<List<String>> playerTags = safe(() -> tags.getVisibleTags(sender.id()), List.of());
+        CompletableFuture<String> rank = safe(() -> ranks == null ? CompletableFuture.completedFuture("")
+                : ranks.getRankLabel(sender.id()).thenApply(r -> r + " "), "");
         CompletableFuture<Void> both = groups.thenCombine(balance, (g, b) -> new Object[]{g, b})
-                .thenCombine(playerTags, (gb, t) -> {
-                    @SuppressWarnings("unchecked") Set<String> g = (Set<String>) gb[0];
-                    deliverLater(sender, channel, message, g, (Long) gb[1], t);
+                .thenCombine(playerTags, (gb, t) -> new Object[]{gb[0], gb[1], t})
+                .thenCombine(rank, (a, r) -> {
+                    @SuppressWarnings("unchecked") Set<String> g = (Set<String>) a[0];
+                    @SuppressWarnings("unchecked") List<String> t = (List<String>) a[2];
+                    deliverLater(sender, channel, message, g, (Long) a[1], t, r);
                     return null;
                 });
         // Fora da thread principal esperamos (mantém a ordem das mensagens); na principal só encadeamos.
@@ -103,10 +114,10 @@ public class ChatService {
     }
 
     private void deliverLater(Recipient sender, Channel channel, String message, Set<String> groups, Long cents,
-                              List<String> playerTags) {
+                              List<String> playerTags, String rank) {
         mainThread.execute(() -> {
             try {
-                deliver(sender, channel, message, groups, cents, playerTags);
+                deliver(sender, channel, message, groups, cents, playerTags, rank);
             } catch (RuntimeException e) {
                 onError.accept(e);
             }
@@ -114,10 +125,11 @@ public class ChatService {
     }
 
     private void deliver(Recipient sender, Channel channel, String message, Set<String> groups, Long cents,
-                         List<String> playerTags) {
+                         List<String> playerTags, String rank) {
         if (!sender.isOnline()) return;
         // Os textos já trazem as cores do fTags; ficam com um espaço no fim para colar ao {tag}.
-        String tagsText = playerTags.isEmpty() ? "" : String.join(" ", playerTags) + " ";
+        // O rank (do fRankup, com espaço no fim) vai à frente das tags.
+        String tagsText = rank + (playerTags.isEmpty() ? "" : String.join(" ", playerTags) + " ");
         String hover = cents == null ? null : config.hoverMoney().replace("{dinheiro}", economy.format(cents));
         BaseComponent[] line = config.format().build(channel, tagsText, config.tags().select(groups), sender.name(), message, hover);
 

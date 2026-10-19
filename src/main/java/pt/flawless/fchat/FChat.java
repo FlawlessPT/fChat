@@ -18,6 +18,7 @@ import pt.flawless.fapi.tags.TagsApi;
 import pt.flawless.fapi.tags.TagsUnavailableException;
 import pt.flawless.fchat.chat.ChatConfig;
 import pt.flawless.fchat.chat.ChatListener;
+import pt.flawless.fapi.ranks.Ranks;
 import pt.flawless.fchat.chat.ChatService;
 import pt.flawless.fchat.chat.PlayerRecipient;
 import pt.flawless.fchat.commands.ChannelCommand;
@@ -50,6 +51,7 @@ public class FChat extends JavaPlugin {
                     line -> Bukkit.getConsoleSender().sendMessage(line), Bukkit::isPrimaryThread,
                     System::currentTimeMillis);
 
+            if (Bukkit.getPluginManager().getPlugin("fRankup") != null) service.setRanks(Ranks.get());
             getServer().getServicesManager().register(ChatApi.class, prefs, this, ServicePriority.Normal);
             Bukkit.getPluginManager().registerEvents(new PrefsListener(prefs), this);
             Bukkit.getPluginManager().registerEvents(new ChatListener(service, prefs), this);

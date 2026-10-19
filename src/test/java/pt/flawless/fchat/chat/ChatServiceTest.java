@@ -49,7 +49,7 @@ class ChatServiceTest {
     List<Fake> all;
     List<String> console = new ArrayList<>();
     List<Throwable> errors = new ArrayList<>();
-    boolean groupsFail, balanceFail, onMain, tagsFail, tagsThrow;
+    boolean groupsFail, balanceFail, onMain, tagsFail, tagsThrow, bypass;
     long now = 10_000;
     List<String> playerTags = List.of();
     Set<String> groups = Set.of();
@@ -69,8 +69,8 @@ class ChatServiceTest {
 
     ChatService service() {
         PermissionsApi perms = (PermissionsApi) Proxy.newProxyInstance(getClass().getClassLoader(),
-                new Class<?>[]{PermissionsApi.class}, (p, m, a) -> groupsFail
-                        ? CompletableFuture.failedFuture(new RuntimeException("db"))
+                new Class<?>[]{PermissionsApi.class}, (p, m, a) -> m.getName().equals("has") ? bypass : groupsFail
+                        ?CompletableFuture.failedFuture(new RuntimeException("db"))
                         : CompletableFuture.completedFuture(groups));
         EconomyApi eco = (EconomyApi) Proxy.newProxyInstance(getClass().getClassLoader(),
                 new Class<?>[]{EconomyApi.class}, (p, m, a) -> {
@@ -107,6 +107,16 @@ class ChatServiceTest {
         s.send(alice, Channel.GLOBAL, "dois");
         assertEquals("[G] [Membro] Alice: dois", far.last());
         assertEquals(3, console.size());
+    }
+
+    @Test
+    void bypassPermissionSkipsCooldown() {
+        bypass = true;
+        ChatService s = service();
+        s.send(alice, Channel.GLOBAL, "um");
+        s.send(alice, Channel.GLOBAL, "dois");
+        assertEquals(2, console.size());
+        assertEquals("[G] [Membro] Alice: dois", bob.last());
     }
 
     @Test

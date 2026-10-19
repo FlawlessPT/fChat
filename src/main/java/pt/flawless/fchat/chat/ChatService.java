@@ -24,6 +24,8 @@ import java.util.function.Supplier;
 /** Formata e entrega mensagens de chat. {@code send} pode ser chamado de qualquer thread e nunca bloqueia a principal. */
 public class ChatService {
     private final ChatConfig config;
+    static final String BYPASS_COOLDOWN = "fchat.bypass.cooldown";
+
     private final PermissionsApi perms;
     private final EconomyApi economy;
     private final TagsApi tags;
@@ -75,6 +77,7 @@ public class ChatService {
 
     /** Uma mensagem por {@code cooldownMs} por jogador, em qualquer canal; avisa o jogador quando recusa. */
     private boolean acquireCooldown(Recipient sender) {
+        if (perms.has(sender.id(), BYPASS_COOLDOWN)) return true;
         long now = clock.getAsLong();
         boolean[] allowed = {false};
         lastMessage.compute(sender.id(), (id, last) -> {

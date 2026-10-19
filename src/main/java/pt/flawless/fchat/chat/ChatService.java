@@ -128,8 +128,8 @@ public class ChatService {
                          List<String> playerTags, String rank) {
         if (!sender.isOnline()) return;
         // Os textos já trazem as cores do fTags; ficam com um espaço no fim para colar ao {tag}.
-        // O rank (do fRankup, com espaço no fim) vai à frente das tags.
-        String tagsText = rank + (playerTags.isEmpty() ? "" : String.join(" ", playerTags) + " ");
+        // O rank (do fRankup, com espaço no fim) vai depois das tags e logo antes da tag de grupo.
+        String tagsText = (playerTags.isEmpty() ? "" : String.join(" ", playerTags) + " ") + rank;
         String hover = cents == null ? null : config.hoverMoney().replace("{dinheiro}", economy.format(cents));
         BaseComponent[] line = config.format().build(channel, tagsText, config.tags().select(groups), sender.name(), message, hover);
 

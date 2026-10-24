@@ -1,5 +1,6 @@
 name: fChat
 main: pt.flawless.fchat.FChat
+api-version: '1.21'
 description: Chat com canais local e global
 version: 1.0
 depend: [fAPI, fDatabase, fEconomy, fPermissions, fTags]

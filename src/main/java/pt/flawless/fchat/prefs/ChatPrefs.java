@@ -2,48 +2,38 @@ package pt.flawless.fchat.prefs;
 
 import pt.flawless.fapi.chat.Channel;
 import pt.flawless.fapi.chat.ChatApi;
+import pt.flawless.fapi.prefs.Pref;
+import pt.flawless.fapi.prefs.PrefOption;
+import pt.flawless.fapi.prefs.PrefsApi;
 
-import java.util.Map;
+import org.bukkit.Material;
+
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
-/** {@link ChatApi} com cache dos jogadores online sobre um {@link ChatPrefsRepository}. */
+/** {@link ChatApi} sobre a preferência {@code chat-channel} do fPrefs. */
 public class ChatPrefs implements ChatApi {
 
-    private final ChatPrefsRepository repo;
-    private final Consumer<Throwable> onError;
-    private final Map<UUID, Channel> cache = new ConcurrentHashMap<>();
+    private static final String ID = "chat-channel";
 
-    public ChatPrefs(ChatPrefsRepository repo, Consumer<Throwable> onError) {
-        this.repo = repo;
-        this.onError = onError;
-    }
+    private final PrefsApi prefs;
 
-    /** Carrega a preferência para a cache; se falhar, regista o erro e o jogador fica em LOCAL. */
-    public void load(UUID uuid) {
-        repo.find(uuid).whenComplete((found, error) -> {
-            if (error != null) {
-                onError.accept(error);
-            } else {
-                found.ifPresent(channel -> cache.put(uuid, channel));
-            }
-        });
-    }
-
-    public void unload(UUID uuid) {
-        cache.remove(uuid);
+    public ChatPrefs(PrefsApi prefs) {
+        this.prefs = prefs;
+        prefs.register(new Pref(ID, "§eChat padrão", Material.WRITABLE_BOOK,
+                List.of("§7Canal em que falas sem usar /l ou /g."),
+                List.of(new PrefOption("local", "§aLocal"), new PrefOption("global", "§bGlobal")),
+                "local"));
     }
 
     @Override
     public Channel getDefaultChannel(UUID uuid) {
-        return cache.getOrDefault(uuid, Channel.LOCAL);
+        return "global".equals(prefs.get(uuid, ID)) ? Channel.GLOBAL : Channel.LOCAL;
     }
 
-    /** Grava primeiro; a cache só muda se a gravação correr bem. */
     @Override
     public CompletableFuture<Void> setDefaultChannel(UUID uuid, Channel channel) {
-        return repo.save(uuid, channel).thenRun(() -> cache.put(uuid, channel));
+        return prefs.set(uuid, ID, channel == Channel.GLOBAL ? "global" : "local");
     }
 }
